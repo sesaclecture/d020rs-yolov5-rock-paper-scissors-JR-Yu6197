@@ -4,8 +4,13 @@ import os
 import json
 
 # TODO: 커스텀 모델 로드
+model_path = os.path.abspath("./rps_model.onnx") #절대경로에서 #rps_model.onnx
+model = torch.hub.load("ultralytics/yolov5", "custom" , path = model_path)
 
 # TODO: Label 로드
+label_path = os.path.abspath("./rps_model.names.json")
+with open(label_path, "r") as f:
+    label_names = json.load(f)
 
 # Video capture
 cap = cv2.VideoCapture(0)
@@ -21,11 +26,13 @@ while True:
     # 추론 실행 (BGR -> RGB)
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     # TODO: 추론 전 입력 크기 보정 (640x640)
+    rgb_frame = cv2.resize(rgb_frame, (640,640))
 
     results = model(rgb_frame)
 
     # TODO: 카메라 입력의 크기(frame_h, frame_w)와 모델의 입력 크기(input_h, input_w) 구하기
-
+    frame_h, frame_w, _ = frame.shape
+    input_h, input_w, _ = rgb_frame.shape
     # Boudning box 그리기
     for i, obj in enumerate(results.xyxy[0]):
         # 인식결과를 표시하기 위한 좌표를 얻음
@@ -33,8 +40,14 @@ while True:
         conf = obj[4]
 
         # TODO: 인식된 정확도(confidence)와 클래스를 label로 구성
-
+        cls_name = model.names[cls]
+        display_name = label_names[str(int(cls))]
+        label = f"{display_name} {conf:.2f}"
         # TODO: 출력 바운딩박스 크기 조절
+        x1 = int(x1 * frame_w / input_w)
+        y1 = int(y1 * frame_h / input_h)
+        x2 = int(x2 * frame_w / input_w)
+        y2 = int(y2 * frame_h / input_h)
 
         # OpenCV를 이용해서 해당 좌표에 사각형과 text를 출력
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
